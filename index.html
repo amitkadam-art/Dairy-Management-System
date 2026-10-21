@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DairyCare – Dairy Management System</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+  <!-- ===== Sidebar navigation (buttons switch the visible page) ===== -->
+  <aside class="sidebar">
+    <h1>🥛 DairyCare</h1>
+    <nav>
+      <button data-page="dashboard" class="active">Dashboard</button>
+      <button data-page="farmers">Farmers</button>
+      <button data-page="collection">Milk Collection</button>
+      <button data-page="sales">Milk Sales</button>
+      <button data-page="payments">Payments</button>
+      <button data-page="expenses">Expenses</button>
+      <button data-page="reports">Reports</button>
+      <button data-page="bill">📄 10-Day Bill</button>
+    </nav>
+    <button id="resetBtn" class="reset">Reset sample data</button>
+  </aside>
+
+  <main>
+    <!-- ===== Dashboard ===== -->
+    <section id="dashboard" class="page active">
+      <h2>Dashboard</h2>
+      <div class="cards">
+        <div class="card"><span>Total farmers</span><b id="dFarmers">0</b></div>
+        <div class="card"><span>Milk collected</span><b id="dCollected">0</b></div>
+        <div class="card"><span>Milk sold</span><b id="dSold">0</b></div>
+        <div class="card"><span>Remaining milk</span><b id="dRemaining">0</b></div>
+        <div class="card hl"><span>Net income</span><b id="dIncome">0</b><small>Sales − milk cost − expenses</small>
+        </div>
+      </div>
+      <h3>Recent collections</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Farmer</th>
+              <th>Shift</th>
+              <th>Litres</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody id="recentBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== Farmers ===== -->
+    <section id="farmers" class="page">
+      <h2>Farmer Management</h2>
+      <form id="farmerForm" class="form">
+        <input type="hidden" id="fId">
+        <label>Name<input id="fName" placeholder="Full name"></label>
+        <label>Phone<input id="fPhone" placeholder="10-digit number"></label>
+        <label>Village<input id="fVillage" placeholder="Village"></label>
+        <label>Milk Type
+          <select id="fMilkType">
+            <option value="Cow">Cow</option>
+            <option value="Buffalo">Buffalo</option>
+          </select>
+        </label>
+        <div class="actions"><button class="btn" id="fSave">Add farmer</button><button type="button" class="btn ghost"
+            id="fCancel" hidden>Cancel</button></div>
+      </form>
+      <input class="search" id="fSearch" placeholder="🔍 Search farmers...">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Village</th>
+              <th>Milk Type</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="farmerBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== Milk Collection ===== -->
+    <section id="collection" class="page">
+      <h2>Milk Collection</h2>
+      <form id="collForm" class="form">
+        <label>Search Farmer
+          <input id="cFarmerSearch" list="cFarmerList" placeholder="🔍 Type name or phone...">
+          <datalist id="cFarmerList"></datalist>
+        </label>
+        <label>Select Farmer<select id="cFarmer"></select></label>
+        <label>Milk Type
+          <select id="cMilkType">
+            <option value="Cow">Cow</option>
+            <option value="Buffalo">Buffalo</option>
+          </select>
+        </label>
+        <label>Date<input type="date" id="cDate"></label>
+        <label>Shift<select id="cShift">
+            <option>Morning</option>
+            <option>Evening</option>
+          </select></label>
+        <label>Fat (%)<input type="number" step="0.1" id="cFat" placeholder="e.g. 4.0" value="4.0"></label>
+        <label>SNF (%)<input type="number" step="0.1" id="cSnf" placeholder="e.g. 8.5" value="8.5"></label>
+        <label>Litres<input type="number" step="0.1" id="cLitres" placeholder="0.0"></label>
+        <label>Rate (₹/L)<input type="number" step="0.01" id="cRate" value="40"></label>
+        <label>Amount (auto)<input id="cAmount" readonly></label>
+        <div class="actions"><button class="btn">Save collection</button></div>
+      </form>
+      <input class="search" id="cSearch" placeholder="🔍 Search collections by farmer, date, shift, type, fat...">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Farmer</th>
+              <th>Milk</th>
+              <th>Shift</th>
+              <th>Fat %</th>
+              <th>SNF %</th>
+              <th>Litres</th>
+              <th>Rate</th>
+              <th>Amount</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="collBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== Milk Sales ===== -->
+    <section id="sales" class="page">
+      <h2>Milk Sales</h2>
+      <p class="hint">Available stock: <b id="stockHint">0</b> L</p>
+      <form id="saleForm" class="form">
+        <label>Date<input type="date" id="sDate"></label>
+        <label>Customer<input id="sCustomer" placeholder="Customer / dairy"></label>
+        <label>Quantity (L)<input type="number" step="0.1" id="sQty"></label>
+        <label>Selling rate (₹/L)<input type="number" step="0.01" id="sRate" value="55"></label>
+        <label>Revenue (auto)<input id="sRevenue" readonly></label>
+        <div class="actions"><button class="btn">Save sale</button></div>
+      </form>
+      <input class="search" id="sSearch" placeholder="🔍 Search sales...">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Qty (L)</th>
+              <th>Rate</th>
+              <th>Revenue</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="saleBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== Farmer Payments ===== -->
+    <section id="payments" class="page">
+      <h2>Farmer Payments</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Farmer</th>
+              <th>Total earned</th>
+              <th>Paid</th>
+              <th>Balance due</th>
+            </tr>
+          </thead>
+          <tbody id="balBody"></tbody>
+        </table>
+      </div>
+      <h3>Record a payment</h3>
+      <form id="payForm" class="form">
+        <label>Farmer<select id="pFarmer"></select></label>
+        <label>Date<input type="date" id="pDate"></label>
+        <label>Amount (₹)<input type="number" step="0.01" id="pAmount"></label>
+        <label>Note<input id="pNote" placeholder="Cash / UPI..."></label>
+        <div class="actions"><button class="btn">Save payment</button></div>
+      </form>
+      <p class="hint" id="dueHint"></p>
+      <h3>Payment history</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Farmer</th>
+              <th>Amount</th>
+              <th>Note</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="payBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== Expenses ===== -->
+    <section id="expenses" class="page">
+      <h2>Expenses</h2>
+      <form id="expForm" class="form">
+        <label>Date<input type="date" id="eDate"></label>
+        <label>Category<select id="eCat">
+            <option>Feed</option>
+            <option>Transport</option>
+            <option>Salary</option>
+            <option>Electricity</option>
+            <option>Other</option>
+          </select></label>
+        <label>Description<input id="eDesc" placeholder="What was it for?"></label>
+        <label>Amount (₹)<input type="number" step="0.01" id="eAmount"></label>
+        <div class="actions"><button class="btn">Save expense</button></div>
+      </form>
+      <input class="search" id="eSearch" placeholder="🔍 Search expenses...">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Category</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="expBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== Reports ===== -->
+    <section id="reports" class="page">
+      <h2>Reports</h2>
+      <h3>Daily report <input type="date" id="rDay"></h3>
+      <div class="cards" id="dayCards"></div>
+      <h3>Monthly report <input type="month" id="rMonth"></h3>
+      <div class="cards" id="monthCards"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Collected (L)</th>
+              <th>Sold (L)</th>
+              <th>Revenue</th>
+              <th>Milk cost</th>
+              <th>Expenses</th>
+            </tr>
+          </thead>
+          <tbody id="monthBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== 10-Day Milk Bill (Gokul Dudh Sahkari) ===== -->
+    <section id="bill" class="page">
+      <h2>10-Day Farmer Milk Bill</h2>
+      <div class="bill-controls form no-print">
+        <label>Farmer
+          <select id="billFarmer"></select>
+        </label>
+        <label>Billing Month
+          <input type="month" id="billMonth">
+        </label>
+        <label>10-Day Period
+          <select id="billCycle">
+            <option value="1" selected>1st to 10th (Days 01 - 10)</option>
+            <option value="2">11th to 20th (Days 11 - 20)</option>
+            <option value="3">21st to End of Month (Days 21 - End)</option>
+          </select>
+        </label>
+        <label>Feed / Advance Deduction (₹)
+          <input type="number" step="1" id="billDeduction" value="0" placeholder="0">
+        </label>
+        <label>Incentive / Bonus Rate (₹/L)
+          <input type="number" step="0.1" id="billIncentiveRate" value="0.70" placeholder="0.70">
+        </label>
+        <div class="actions">
+          <button type="button" class="btn" id="genBillBtn">Generate Bill</button>
+          <button type="button" class="btn ghost" id="printBillBtn">🖨️ Print Bill</button>
+        </div>
+      </div>
+
+      <!-- Printable Milk Bill Paper -->
+      <div id="billPaper" class="bill-paper"></div>
+    </section>
+  </main>
+
+  <div id="toast"></div>
+  <script src="script.js"></script>
+</body>
+
+</html>
